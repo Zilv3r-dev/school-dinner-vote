@@ -9,12 +9,10 @@ const saveBtn = document.getElementById("save-btn");
 const statusEl = document.getElementById("status");
 const optionsWrap = document.getElementById("options-wrap");
 const resetVotesCheckbox = document.getElementById("reset-votes");
-const meatLabelInput = document.getElementById("meat-label");
 
 let config = {
   pollOptions: [],
-  nutrition: {},
-  meatLabel: "With Meat"
+  nutrition: {}
 };
 
 function setStatus(type, text) {
@@ -78,9 +76,13 @@ function renderOptions() {
           <span class="muted">Meal Name</span>
           <input class="option-name" data-index="${index}" value="${option}" />
         </label>
+        <label>
+          <span class="muted">Meat Label For This Option (example: Chicken, Steak)</span>
+          <input class="meat-label" data-index="${index}" value="${nutrition.meatLabel ?? "With Meat"}" />
+        </label>
         <div class="grid-2">
           <div class="stack">
-            <strong>With Meat</strong>
+            <strong>${nutrition.meatLabel ?? "With Meat"}</strong>
             ${METRICS.map(
               (metric) => `
               <label>
@@ -124,7 +126,12 @@ function collectFormData() {
   const nutrition = {};
 
   names.forEach((name, idx) => {
-    nutrition[name] = { meat: {}, veggie: {} };
+    const meatLabelInput = document.querySelector(`.meat-label[data-index="${idx}"]`);
+    nutrition[name] = {
+      meatLabel: ((meatLabelInput?.value || "").trim() || "With Meat"),
+      meat: {},
+      veggie: {}
+    };
     METRICS.forEach((metric) => {
       const meatInput = document.querySelector(
         `.nutrient[data-index="${idx}"][data-side="meat"][data-metric="${metric}"]`
@@ -139,8 +146,7 @@ function collectFormData() {
 
   return {
     pollOptions: names,
-    nutrition,
-    meatLabel: (meatLabelInput.value || "").trim() || "With Meat"
+    nutrition
   };
 }
 
@@ -161,11 +167,9 @@ async function loadConfig() {
 
     config = {
       pollOptions: data.pollOptions,
-      nutrition: data.nutrition,
-      meatLabel: data.meatLabel || "With Meat"
+      nutrition: data.nutrition
     };
 
-    meatLabelInput.value = config.meatLabel;
     saveAdminKeyLocally();
     renderOptions();
     setStatus("ok", "Loaded current settings.");
@@ -212,11 +216,9 @@ async function saveConfig() {
 
     config = {
       pollOptions: data.config.pollOptions,
-      nutrition: data.config.nutrition,
-      meatLabel: data.config.meatLabel || "With Meat"
+      nutrition: data.config.nutrition
     };
 
-    meatLabelInput.value = config.meatLabel;
     saveAdminKeyLocally();
     renderOptions();
     setStatus("ok", data.message || "Settings saved.");
@@ -234,7 +236,6 @@ function addOption() {
 
 function init() {
   loadSavedAdminKey();
-  meatLabelInput.value = "With Meat";
   loadBtn.addEventListener("click", loadConfig);
   clearAuthBtn.addEventListener("click", clearSavedAdminKey);
   addOptionBtn.addEventListener("click", addOption);

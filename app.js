@@ -6,7 +6,6 @@ let state = {
   pollCounts: {},
   totalVotes: 0,
   userVote: null,
-  meatLabel: "With Meat",
   nutrition: {},
   suggestionAllowed: null,
   recentSuggestions: []
@@ -106,8 +105,6 @@ function renderPoll() {
 }
 
 function renderNutritionSelector() {
-  meatHeader.textContent = state.meatLabel || "With Meat";
-
   const current = mealSelect.value;
   mealSelect.innerHTML = "";
 
@@ -129,6 +126,7 @@ function renderNutritionTable(mealName) {
   nutritionBody.innerHTML = "";
   const meal = state.nutrition[mealName];
   if (!meal) return;
+  meatHeader.textContent = meal.meatLabel || "With Meat";
 
   ["Calories", "Protein", "Carbs", "Fat", "Fiber"].forEach((metric) => {
     const row = document.createElement("tr");
@@ -206,7 +204,6 @@ async function loadBootstrap() {
       pollCounts: data.pollCounts,
       totalVotes: data.totalVotes,
       userVote: data.userVote,
-      meatLabel: data.meatLabel || "With Meat",
       nutrition: data.nutrition,
       suggestionAllowed: Boolean(data.suggestionAllowed),
       recentSuggestions: data.recentSuggestions

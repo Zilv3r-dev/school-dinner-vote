@@ -127,6 +127,13 @@ def get_poll_config(conn):
 
     options = json.loads(row["options_json"])
     nutrition = json.loads(row["nutrition_json"])
+
+    # Backward compatibility: older configs may not have per-option meat labels.
+    for option in options:
+        entry = nutrition.get(option, {})
+        if isinstance(entry, dict) and "meatLabel" not in entry:
+            entry["meatLabel"] = row["meat_label"] or DEFAULT_MEAT_LABEL
+            nutrition[option] = entry
     return {
         "pollOptions": options,
         "nutrition": nutrition,
@@ -171,7 +178,7 @@ def ensure_admin_access(handler):
     return True
 
 
-def validate_config(options, nutrition, meat_label):
+def validate_config(options, nutrition):
     if not isinstance(options, list):
         return "pollOptions must be a list"
 
@@ -199,11 +206,6 @@ def validate_config(options, nutrition, meat_label):
     if not isinstance(nutrition, dict):
         return "nutrition must be an object"
 
-    if not isinstance(meat_label, str) or not meat_label.strip():
-        return "meatLabel must be non-empty text"
-    if len(meat_label.strip()) > 40:
-        return "meatLabel must be 40 characters or less"
-
     normalized = {}
     for option in cleaned:
         entry = nutrition.get(option)
@@ -215,14 +217,18 @@ def validate_config(options, nutrition, meat_label):
         if not isinstance(meat, dict) or not isinstance(veggie, dict):
             return f"Nutrition for {option} must include meat and veggie sections"
 
-        normalized[option] = {"meat": {}, "veggie": {}}
+        meat_label = str(entry.get("meatLabel", DEFAULT_MEAT_LABEL)).strip() or DEFAULT_MEAT_LABEL
+        if len(meat_label) > 40:
+            return f"Meat label for {option} must be 40 characters or less"
+
+        normalized[option] = {"meatLabel": meat_label, "meat": {}, "veggie": {}}
         for metric in METRICS:
             if metric not in meat or metric not in veggie:
                 return f"Nutrition for {option} must include {metric} in both columns"
             normalized[option]["meat"][metric] = str(meat[metric]).strip()
             normalized[option]["veggie"][metric] = str(veggie[metric]).strip()
 
-    return {"pollOptions": cleaned, "nutrition": normalized, "meatLabel": meat_label.strip()}
+    return {"pollOptions": cleaned, "nutrition": normalized}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -289,7 +295,6 @@ class Handler(BaseHTTPRequestHandler):
             config = get_poll_config(conn)
             poll_options = config["pollOptions"]
             nutrition = config["nutrition"]
-            meat_label = config["meatLabel"]
             counts = poll_counts(conn, poll_options)
             total_votes = sum(counts.values())
 
@@ -314,7 +319,6 @@ class Handler(BaseHTTPRequestHandler):
                 "totalVotes": total_votes,
                 "userVote": user_vote,
                 "nutrition": nutrition,
-                "meatLabel": meat_label,
                 "today": today_key(),
                 "suggestionAllowed": suggestion_allowed,
                 "recentSuggestions": recent_suggestions(conn),
@@ -437,10 +441,9 @@ class Handler(BaseHTTPRequestHandler):
 
             options = body.get("pollOptions")
             nutrition = body.get("nutrition")
-            meat_label = body.get("meatLabel")
             reset_votes = bool(body.get("resetVotes", True))
 
-            validated = validate_config(options, nutrition, meat_label)
+            validated = validate_config(options, nutrition)
             if isinstance(validated, str):
                 self._send_json({"error": validated}, status=400)
                 return
@@ -455,7 +458,7 @@ class Handler(BaseHTTPRequestHandler):
                 (
                     json.dumps(validated["pollOptions"]),
                     json.dumps(validated["nutrition"]),
-                    validated["meatLabel"],
+                    DEFAULT_MEAT_LABEL,
                     datetime.now().isoformat(timespec="seconds"),
                 ),
             )
