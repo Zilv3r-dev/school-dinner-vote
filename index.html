@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Dinner Choice Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Work+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-main: #ffffff;
+        --card-bg: #ffffff;
+        --text-main: #13281e;
+        --text-sub: #486656;
+        --forest: #1f5e3b;
+        --mint: #eaf7ef;
+        --line-soft: #d9ebde;
+        --shadow: 0 18px 36px rgba(30, 92, 60, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text-main);
+        font-family: "Work Sans", sans-serif;
+        background: radial-gradient(circle at 95% 2%, #f2fbf4 0%, transparent 30%),
+          radial-gradient(circle at 0% 20%, #f6fff7 0%, transparent 35%),
+          var(--bg-main);
+      }
+
+      .page {
+        width: min(1040px, 94vw);
+        margin: 34px auto 60px;
+      }
+
+      .hero {
+        border: 2px solid var(--forest);
+        border-radius: 24px;
+        padding: 30px 24px;
+        box-shadow: var(--shadow);
+        background: linear-gradient(160deg, #ffffff 0%, #f6fcf8 100%);
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-family: "Nunito", sans-serif;
+        font-size: clamp(1.8rem, 3.8vw, 2.5rem);
+      }
+
+      .hero p {
+        margin: 8px 0 0;
+        color: var(--text-sub);
+      }
+
+      .grid {
+        margin-top: 20px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .card {
+        border: 1px solid var(--line-soft);
+        border-radius: 18px;
+        background: var(--card-bg);
+        padding: 22px;
+        box-shadow: var(--shadow);
+      }
+
+      h2 {
+        margin: 0;
+        font-family: "Nunito", sans-serif;
+      }
+
+      .section-note {
+        margin: 7px 0 16px;
+        color: var(--text-sub);
+      }
+
+      select,
+      textarea {
+        width: 100%;
+        border: 2px solid var(--forest);
+        border-radius: 12px;
+        padding: 11px;
+        font-size: 0.98rem;
+        font-family: inherit;
+        background: #fff;
+        color: var(--text-main);
+      }
+
+      select:focus,
+      textarea:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px #d7efdf;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-family: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .option {
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #fff;
+      }
+
+      .option-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .option-title {
+        margin: 0;
+        font-weight: 700;
+      }
+
+      .vote-btn {
+        background: var(--forest);
+        color: #fff;
+      }
+
+      .meter {
+        height: 12px;
+        background: var(--mint);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .meter-fill {
+        height: 100%;
+        width: 0;
+        transition: width 0.4s ease;
+        background: linear-gradient(90deg, #2f8f59, #5dc58b);
+      }
+
+      .split {
+        margin: 8px 0 0;
+        color: var(--text-sub);
+      }
+
+      .status {
+        margin-top: 10px;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 600;
+      }
+
+      .status.ok {
+        background: #ecf8f0;
+        color: #1f5f3b;
+      }
+
+      .status.warn {
+        background: #f8fcf9;
+        color: #486656;
+        border: 1px solid #d4e8db;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid #e6f1e9;
+      }
+
+      th {
+        color: #295d40;
+        font-size: 0.9rem;
+      }
+
+      textarea {
+        min-height: 105px;
+        resize: vertical;
+      }
+
+      .suggest-btn {
+        margin-top: 10px;
+        background: var(--forest);
+        color: #fff;
+      }
+
+      .muted {
+        color: var(--text-sub);
+      }
+
+      .list {
+        margin: 8px 0 0;
+        padding-left: 18px;
+      }
+
+      .list li {
+        margin: 4px 0;
+        color: var(--text-sub);
+      }
+
+      @media (max-width: 760px) {
+        .page {
+          margin: 20px auto 40px;
+        }
+
+        .hero,
+        .card {
+          padding: 18px;
+        }
+
+        .option-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>School Dinner Choice Hub</h1>
+        <p>No sign-in needed. This device can vote once and suggest once per day.</p>
+      </section>
+
+      <div class="grid">
+        <section class="card" aria-labelledby="poll-title">
+          <h2 id="poll-title">1) Vote For Next Vegetarian Dinner</h2>
+          <p class="section-note">Live split updates every 5 seconds.</p>
+          <div id="poll-options"></div>
+          <div id="vote-status" class="status warn" role="status"></div>
+        </section>
+
+        <section class="card" aria-labelledby="nutrition-title">
+          <h2 id="nutrition-title">2) Nutrition: Meat vs Vegetarian</h2>
+          <p class="section-note">Compare calories, protein, carbs, fat, and fiber.</p>
+          <label class="muted" for="meal-select">Choose meal:</label>
+          <select id="meal-select"></select>
+          <table aria-label="Nutrition comparison table">
+            <thead>
+              <tr>
+                <th>Nutrition</th>
+                <th>With Meat</th>
+                <th>Vegetarian Option</th>
+              </tr>
+            </thead>
+            <tbody id="nutrition-body"></tbody>
+          </table>
+        </section>
+
+        <section class="card" aria-labelledby="suggest-title">
+          <h2 id="suggest-title">3) Suggest A Meal For The Next Poll</h2>
+          <p class="section-note">One suggestion per day per device.</p>
+          <textarea
+            id="suggest-input"
+            maxlength="140"
+            placeholder="Example: Spinach lasagna with roasted vegetables"
+          ></textarea>
+          <button id="suggest-btn" class="suggest-btn">Submit Suggestion</button>
+          <div id="suggest-status" class="status warn" role="status"></div>
+          <p class="muted">Recent suggestions:</p>
+          <ul id="suggest-list" class="list"></ul>
+        </section>
+      </div>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

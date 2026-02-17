@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+import json
+import os
+import sqlite3
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
+
+HOST = os.environ.get("HOST", "127.0.0.1")
+PORT = int(os.environ.get("PORT", "8000"))
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "school_meals.db"
+
+POLL_OPTIONS = [
+    "Mushroom Soup",
+    "Plant-Based Meatballs",
+    "Chickpea Curry",
+    "Veggie Taco Bowl",
+]
+
+NUTRITION_DATA = {
+    "Mushroom Soup": {
+        "meat": {"Calories": 340, "Protein": "24g", "Carbs": "19g", "Fat": "16g", "Fiber": "2g"},
+        "veggie": {"Calories": 280, "Protein": "12g", "Carbs": "30g", "Fat": "10g", "Fiber": "6g"},
+    },
+    "Plant-Based Meatballs": {
+        "meat": {"Calories": 460, "Protein": "31g", "Carbs": "33g", "Fat": "22g", "Fiber": "3g"},
+        "veggie": {"Calories": 420, "Protein": "22g", "Carbs": "38g", "Fat": "18g", "Fiber": "8g"},
+    },
+    "Chickpea Curry": {
+        "meat": {"Calories": 510, "Protein": "28g", "Carbs": "45g", "Fat": "21g", "Fiber": "5g"},
+        "veggie": {"Calories": 430, "Protein": "17g", "Carbs": "51g", "Fat": "14g", "Fiber": "11g"},
+    },
+    "Veggie Taco Bowl": {
+        "meat": {"Calories": 540, "Protein": "34g", "Carbs": "41g", "Fat": "24g", "Fiber": "6g"},
+        "veggie": {"Calories": 470, "Protein": "19g", "Carbs": "49g", "Fat": "17g", "Fiber": "12g"},
+    },
+}
+
+
+def get_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL UNIQUE,
+            option_name TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL,
+            day_key TEXT NOT NULL,
+            suggestion_text TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(student_id, day_key)
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def today_key():
+    now = datetime.now()
+    return f"{now.year:04d}-{now.month:02d}-{now.day:02d}"
+
+
+def poll_counts(conn):
+    result = {name: 0 for name in POLL_OPTIONS}
+    rows = conn.execute("SELECT option_name, COUNT(*) AS c FROM votes GROUP BY option_name").fetchall()
+    for row in rows:
+        option_name = row["option_name"]
+        if option_name in result:
+            result[option_name] = row["c"]
+    return result
+
+
+def recent_suggestions(conn, limit=8):
+    rows = conn.execute(
+        """
+        SELECT day_key, suggestion_text
+        FROM suggestions
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [{"date": r["day_key"], "text": r["suggestion_text"]} for r in rows]
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _send_json(self, payload, status=200):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_bytes(self, data, content_type, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _read_json(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except json.JSONDecodeError:
+            return None
+
+    def _serve_static(self, path):
+        if path == "/":
+            path = "/index.html"
+        safe = unquote(path.lstrip("/"))
+        full = (BASE_DIR / safe).resolve()
+
+        if not str(full).startswith(str(BASE_DIR)) or not full.is_file():
+            self._send_json({"error": "Not found"}, status=404)
+            return
+
+        suffix = full.suffix.lower()
+        content_type = {
+            ".html": "text/html; charset=utf-8",
+            ".js": "text/javascript; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".json": "application/json; charset=utf-8",
+        }.get(suffix, "application/octet-stream")
+
+        self._send_bytes(full.read_bytes(), content_type)
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == "/api/bootstrap":
+            params = parse_qs(parsed.query)
+            device_id = (params.get("device_id", [""])[0] or "").strip()
+
+            conn = get_conn()
+            counts = poll_counts(conn)
+            total_votes = sum(counts.values())
+
+            user_vote = None
+            suggestion_allowed = None
+            if device_id:
+                row = conn.execute(
+                    "SELECT option_name FROM votes WHERE student_id = ?",
+                    (device_id,),
+                ).fetchone()
+                user_vote = row["option_name"] if row else None
+
+                has_today_suggestion = conn.execute(
+                    "SELECT 1 FROM suggestions WHERE student_id = ? AND day_key = ? LIMIT 1",
+                    (device_id, today_key()),
+                ).fetchone()
+                suggestion_allowed = has_today_suggestion is None
+
+            payload = {
+                "pollOptions": POLL_OPTIONS,
+                "pollCounts": counts,
+                "totalVotes": total_votes,
+                "userVote": user_vote,
+                "nutrition": NUTRITION_DATA,
+                "today": today_key(),
+                "suggestionAllowed": suggestion_allowed,
+                "recentSuggestions": recent_suggestions(conn),
+            }
+            conn.close()
+            self._send_json(payload)
+            return
+
+        self._serve_static(path)
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+
+        if parsed.path == "/api/vote":
+            body = self._read_json()
+            if body is None:
+                self._send_json({"error": "Invalid JSON"}, status=400)
+                return
+
+            device_id = (body.get("device_id") or "").strip()
+            option = (body.get("option") or "").strip()
+
+            if not device_id:
+                self._send_json({"error": "device_id is required"}, status=400)
+                return
+            if option not in POLL_OPTIONS:
+                self._send_json({"error": "Invalid option"}, status=400)
+                return
+
+            conn = get_conn()
+            existing = conn.execute(
+                "SELECT option_name FROM votes WHERE student_id = ?",
+                (device_id,),
+            ).fetchone()
+            if existing:
+                conn.close()
+                self._send_json(
+                    {
+                        "error": "This device already voted",
+                        "userVote": existing["option_name"],
+                    },
+                    status=409,
+                )
+                return
+
+            conn.execute(
+                "INSERT INTO votes (student_id, option_name, created_at) VALUES (?, ?, ?)",
+                (device_id, option, datetime.now().isoformat(timespec="seconds")),
+            )
+            conn.commit()
+            conn.close()
+            self._send_json({"ok": True})
+            return
+
+        if parsed.path == "/api/suggestion":
+            body = self._read_json()
+            if body is None:
+                self._send_json({"error": "Invalid JSON"}, status=400)
+                return
+
+            device_id = (body.get("device_id") or "").strip()
+            text = (body.get("text") or "").strip()
+
+            if not device_id:
+                self._send_json({"error": "device_id is required"}, status=400)
+                return
+            if not text:
+                self._send_json({"error": "Suggestion text is required"}, status=400)
+                return
+            if len(text) > 140:
+                self._send_json({"error": "Suggestion must be 140 chars or less"}, status=400)
+                return
+
+            conn = get_conn()
+            existing = conn.execute(
+                "SELECT 1 FROM suggestions WHERE student_id = ? AND day_key = ? LIMIT 1",
+                (device_id, today_key()),
+            ).fetchone()
+            if existing:
+                conn.close()
+                self._send_json(
+                    {"error": "Only one suggestion per day is allowed"},
+                    status=409,
+                )
+                return
+
+            conn.execute(
+                """
+                INSERT INTO suggestions (student_id, day_key, suggestion_text, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (device_id, today_key(), text, datetime.now().isoformat(timespec="seconds")),
+            )
+            conn.commit()
+            conn.close()
+            self._send_json({"ok": True})
+            return
+
+        self._send_json({"error": "Not found"}, status=404)
+
+
+def main():
+    init_db()
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"Server running at http://{HOST}:{PORT}")
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
