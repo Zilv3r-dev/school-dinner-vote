@@ -47,5 +47,6 @@ Then open:
 7. Click `Create Web Service`.
 8. Wait for deploy, then open the generated public URL.
 9. Open `/admin.html` on your site URL to update meal options and nutrition without redeploying.
+10. In admin page, set the `Meat Column Label` to a specific meat name like `Chicken` or `Steak` whenever needed.
 
 Once deployed, anyone can open the same URL on any device.

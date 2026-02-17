@@ -6,6 +6,7 @@ let state = {
   pollCounts: {},
   totalVotes: 0,
   userVote: null,
+  meatLabel: "With Meat",
   nutrition: {},
   suggestionAllowed: null,
   recentSuggestions: []
@@ -14,6 +15,7 @@ let state = {
 const pollOptionsWrap = document.getElementById("poll-options");
 const voteStatus = document.getElementById("vote-status");
 const mealSelect = document.getElementById("meal-select");
+const meatHeader = document.getElementById("meat-header");
 const nutritionBody = document.getElementById("nutrition-body");
 const suggestInput = document.getElementById("suggest-input");
 const suggestButton = document.getElementById("suggest-btn");
@@ -104,6 +106,8 @@ function renderPoll() {
 }
 
 function renderNutritionSelector() {
+  meatHeader.textContent = state.meatLabel || "With Meat";
+
   const current = mealSelect.value;
   mealSelect.innerHTML = "";
 
@@ -202,6 +206,7 @@ async function loadBootstrap() {
       pollCounts: data.pollCounts,
       totalVotes: data.totalVotes,
       userVote: data.userVote,
+      meatLabel: data.meatLabel || "With Meat",
       nutrition: data.nutrition,
       suggestionAllowed: Boolean(data.suggestionAllowed),
       recentSuggestions: data.recentSuggestions

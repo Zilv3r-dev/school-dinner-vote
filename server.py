@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "school_meals.db"
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 METRICS = ["Calories", "Protein", "Carbs", "Fat", "Fiber"]
+DEFAULT_MEAT_LABEL = "With Meat"
 
 DEFAULT_POLL_OPTIONS = [
     "Mushroom Soup",
@@ -78,21 +79,26 @@ def init_db():
             id INTEGER PRIMARY KEY CHECK (id = 1),
             options_json TEXT NOT NULL,
             nutrition_json TEXT NOT NULL,
+            meat_label TEXT NOT NULL DEFAULT 'With Meat',
             updated_at TEXT NOT NULL
         )
         """
     )
+    cols = {row["name"] for row in cur.execute("PRAGMA table_info(poll_config)").fetchall()}
+    if "meat_label" not in cols:
+        cur.execute("ALTER TABLE poll_config ADD COLUMN meat_label TEXT NOT NULL DEFAULT 'With Meat'")
 
     existing = cur.execute("SELECT 1 FROM poll_config WHERE id = 1").fetchone()
     if not existing:
         cur.execute(
             """
-            INSERT INTO poll_config (id, options_json, nutrition_json, updated_at)
-            VALUES (1, ?, ?, ?)
+            INSERT INTO poll_config (id, options_json, nutrition_json, meat_label, updated_at)
+            VALUES (1, ?, ?, ?, ?)
             """,
             (
                 json.dumps(DEFAULT_POLL_OPTIONS),
                 json.dumps(DEFAULT_NUTRITION_DATA),
+                DEFAULT_MEAT_LABEL,
                 datetime.now().isoformat(timespec="seconds"),
             ),
         )
@@ -108,13 +114,14 @@ def today_key():
 
 def get_poll_config(conn):
     row = conn.execute(
-        "SELECT options_json, nutrition_json, updated_at FROM poll_config WHERE id = 1"
+        "SELECT options_json, nutrition_json, meat_label, updated_at FROM poll_config WHERE id = 1"
     ).fetchone()
 
     if not row:
         return {
             "pollOptions": DEFAULT_POLL_OPTIONS,
             "nutrition": DEFAULT_NUTRITION_DATA,
+            "meatLabel": DEFAULT_MEAT_LABEL,
             "updatedAt": None,
         }
 
@@ -123,6 +130,7 @@ def get_poll_config(conn):
     return {
         "pollOptions": options,
         "nutrition": nutrition,
+        "meatLabel": row["meat_label"] or DEFAULT_MEAT_LABEL,
         "updatedAt": row["updated_at"],
     }
 
@@ -163,7 +171,7 @@ def ensure_admin_access(handler):
     return True
 
 
-def validate_config(options, nutrition):
+def validate_config(options, nutrition, meat_label):
     if not isinstance(options, list):
         return "pollOptions must be a list"
 
@@ -191,6 +199,11 @@ def validate_config(options, nutrition):
     if not isinstance(nutrition, dict):
         return "nutrition must be an object"
 
+    if not isinstance(meat_label, str) or not meat_label.strip():
+        return "meatLabel must be non-empty text"
+    if len(meat_label.strip()) > 40:
+        return "meatLabel must be 40 characters or less"
+
     normalized = {}
     for option in cleaned:
         entry = nutrition.get(option)
@@ -209,7 +222,7 @@ def validate_config(options, nutrition):
             normalized[option]["meat"][metric] = str(meat[metric]).strip()
             normalized[option]["veggie"][metric] = str(veggie[metric]).strip()
 
-    return {"pollOptions": cleaned, "nutrition": normalized}
+    return {"pollOptions": cleaned, "nutrition": normalized, "meatLabel": meat_label.strip()}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -276,6 +289,7 @@ class Handler(BaseHTTPRequestHandler):
             config = get_poll_config(conn)
             poll_options = config["pollOptions"]
             nutrition = config["nutrition"]
+            meat_label = config["meatLabel"]
             counts = poll_counts(conn, poll_options)
             total_votes = sum(counts.values())
 
@@ -300,6 +314,7 @@ class Handler(BaseHTTPRequestHandler):
                 "totalVotes": total_votes,
                 "userVote": user_vote,
                 "nutrition": nutrition,
+                "meatLabel": meat_label,
                 "today": today_key(),
                 "suggestionAllowed": suggestion_allowed,
                 "recentSuggestions": recent_suggestions(conn),
@@ -422,9 +437,10 @@ class Handler(BaseHTTPRequestHandler):
 
             options = body.get("pollOptions")
             nutrition = body.get("nutrition")
+            meat_label = body.get("meatLabel")
             reset_votes = bool(body.get("resetVotes", True))
 
-            validated = validate_config(options, nutrition)
+            validated = validate_config(options, nutrition, meat_label)
             if isinstance(validated, str):
                 self._send_json({"error": validated}, status=400)
                 return
@@ -433,12 +449,13 @@ class Handler(BaseHTTPRequestHandler):
             conn.execute(
                 """
                 UPDATE poll_config
-                SET options_json = ?, nutrition_json = ?, updated_at = ?
+                SET options_json = ?, nutrition_json = ?, meat_label = ?, updated_at = ?
                 WHERE id = 1
                 """,
                 (
                     json.dumps(validated["pollOptions"]),
                     json.dumps(validated["nutrition"]),
+                    validated["meatLabel"],
                     datetime.now().isoformat(timespec="seconds"),
                 ),
             )

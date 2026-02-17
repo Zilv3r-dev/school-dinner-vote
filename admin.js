@@ -9,10 +9,12 @@ const saveBtn = document.getElementById("save-btn");
 const statusEl = document.getElementById("status");
 const optionsWrap = document.getElementById("options-wrap");
 const resetVotesCheckbox = document.getElementById("reset-votes");
+const meatLabelInput = document.getElementById("meat-label");
 
 let config = {
   pollOptions: [],
-  nutrition: {}
+  nutrition: {},
+  meatLabel: "With Meat"
 };
 
 function setStatus(type, text) {
@@ -137,7 +139,8 @@ function collectFormData() {
 
   return {
     pollOptions: names,
-    nutrition
+    nutrition,
+    meatLabel: (meatLabelInput.value || "").trim() || "With Meat"
   };
 }
 
@@ -158,9 +161,11 @@ async function loadConfig() {
 
     config = {
       pollOptions: data.pollOptions,
-      nutrition: data.nutrition
+      nutrition: data.nutrition,
+      meatLabel: data.meatLabel || "With Meat"
     };
 
+    meatLabelInput.value = config.meatLabel;
     saveAdminKeyLocally();
     renderOptions();
     setStatus("ok", "Loaded current settings.");
@@ -207,9 +212,11 @@ async function saveConfig() {
 
     config = {
       pollOptions: data.config.pollOptions,
-      nutrition: data.config.nutrition
+      nutrition: data.config.nutrition,
+      meatLabel: data.config.meatLabel || "With Meat"
     };
 
+    meatLabelInput.value = config.meatLabel;
     saveAdminKeyLocally();
     renderOptions();
     setStatus("ok", data.message || "Settings saved.");
@@ -227,6 +234,7 @@ function addOption() {
 
 function init() {
   loadSavedAdminKey();
+  meatLabelInput.value = "With Meat";
   loadBtn.addEventListener("click", loadConfig);
   clearAuthBtn.addEventListener("click", clearSavedAdminKey);
   addOptionBtn.addEventListener("click", addOption);
