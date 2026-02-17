@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - School Dinner Choice Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Work+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-main: #ffffff;
+        --card-bg: #ffffff;
+        --text-main: #13281e;
+        --text-sub: #486656;
+        --forest: #1f5e3b;
+        --mint: #eaf7ef;
+        --line-soft: #d9ebde;
+        --shadow: 0 18px 36px rgba(30, 92, 60, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        color: var(--text-main);
+        font-family: "Work Sans", sans-serif;
+        background: radial-gradient(circle at 95% 2%, #f2fbf4 0%, transparent 30%),
+          radial-gradient(circle at 0% 20%, #f6fff7 0%, transparent 35%),
+          var(--bg-main);
+      }
+
+      .page {
+        width: min(1100px, 95vw);
+        margin: 26px auto 60px;
+      }
+
+      .card {
+        border: 1px solid var(--line-soft);
+        border-radius: 18px;
+        background: var(--card-bg);
+        padding: 20px;
+        box-shadow: var(--shadow);
+        margin-bottom: 14px;
+      }
+
+      h1, h2 {
+        margin: 0;
+        font-family: "Nunito", sans-serif;
+      }
+
+      .sub {
+        margin: 8px 0 0;
+        color: var(--text-sub);
+      }
+
+      input,
+      textarea,
+      button {
+        font-family: inherit;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 2px solid var(--forest);
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 0.96rem;
+      }
+
+      textarea {
+        min-height: 75px;
+        resize: vertical;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 9px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btn {
+        background: var(--forest);
+        color: white;
+      }
+
+      .btn-light {
+        background: #eef7f1;
+        color: #1f5e3b;
+      }
+
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .option-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        padding: 12px;
+        background: #fff;
+        margin-top: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+      }
+
+      .status {
+        margin-top: 10px;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 600;
+      }
+
+      .status.ok {
+        background: #ecf8f0;
+        color: #1f5f3b;
+      }
+
+      .status.warn {
+        background: #f8fcf9;
+        color: #486656;
+        border: 1px solid #d4e8db;
+      }
+
+      .muted {
+        color: var(--text-sub);
+      }
+
+      @media (max-width: 760px) {
+        .grid-2 { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <h1>Admin: Meal & Nutrition Settings</h1>
+        <p class="sub">Update poll options and nutrition values without editing code.</p>
+        <p><a href="/">Back to Student Page</a></p>
+      </section>
+
+      <section class="card stack">
+        <h2>Admin Access</h2>
+        <p class="muted">Enter the admin password configured in Render as <code>ADMIN_PASSWORD</code>.</p>
+        <input id="admin-password" type="password" placeholder="Admin password" />
+        <div class="row">
+          <button id="load-btn" class="btn">Load Current Settings</button>
+          <button id="clear-auth-btn" class="btn-light">Clear Saved Password</button>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <h2>Poll Options</h2>
+          <button id="add-option-btn" class="btn-light">Add Option</button>
+        </div>
+        <div id="options-wrap"></div>
+      </section>
+
+      <section class="card stack">
+        <h2>Save Changes</h2>
+        <label>
+          <input id="reset-votes" type="checkbox" checked />
+          Reset existing votes when saving new options
+        </label>
+        <button id="save-btn" class="btn">Save Settings</button>
+        <div id="status" class="status warn">Waiting for admin login.</div>
+      </section>
+    </main>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>
