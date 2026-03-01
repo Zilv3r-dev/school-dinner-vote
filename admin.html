@@ -77,6 +77,10 @@
         resize: vertical;
       }
 
+      input[type="checkbox"] {
+        width: auto;
+      }
+
       button {
         border: none;
         border-radius: 999px;
@@ -166,10 +170,80 @@
       </section>
 
       <section class="card stack">
+        <h2>Website Text & Visibility</h2>
+        <div class="grid-2">
+          <label>
+            <span class="muted">Site Title</span>
+            <input id="ui-site-title" />
+          </label>
+          <label>
+            <span class="muted">Hero Subtitle</span>
+            <input id="ui-hero-subtitle" />
+          </label>
+          <label>
+            <span class="muted">Admin Link Text</span>
+            <input id="ui-admin-link-text" />
+          </label>
+          <label>
+            <span class="muted">Poll Title</span>
+            <input id="ui-poll-title" />
+          </label>
+          <label>
+            <span class="muted">Poll Note</span>
+            <input id="ui-poll-note" />
+          </label>
+          <label>
+            <span class="muted">Nutrition Title</span>
+            <input id="ui-nutrition-title" />
+          </label>
+          <label>
+            <span class="muted">Nutrition Note</span>
+            <input id="ui-nutrition-note" />
+          </label>
+          <label>
+            <span class="muted">Nutrition Select Label</span>
+            <input id="ui-nutrition-choose-label" />
+          </label>
+          <label>
+            <span class="muted">Vegetarian Column Header</span>
+            <input id="ui-vegetarian-header" />
+          </label>
+          <label>
+            <span class="muted">Suggestion Title</span>
+            <input id="ui-suggest-title" />
+          </label>
+          <label>
+            <span class="muted">Suggestion Note</span>
+            <input id="ui-suggest-note" />
+          </label>
+          <label>
+            <span class="muted">Suggestion Placeholder</span>
+            <input id="ui-suggest-placeholder" />
+          </label>
+          <label>
+            <span class="muted">Suggestion Button Text</span>
+            <input id="ui-suggest-button-text" />
+          </label>
+          <label>
+            <span class="muted">Recent Suggestions Label</span>
+            <input id="ui-recent-suggestions-label" />
+          </label>
+        </div>
+        <div class="row">
+          <label><input id="ui-show-hero" type="checkbox" /> Show Hero Box</label>
+          <label><input id="ui-show-poll" type="checkbox" /> Show Poll Box</label>
+          <label><input id="ui-show-nutrition" type="checkbox" /> Show Nutrition Box</label>
+          <label><input id="ui-show-suggestion" type="checkbox" /> Show Suggestion Box</label>
+        </div>
+      </section>
+
+      <section class="card stack">
         <div class="row" style="justify-content:space-between; align-items:center;">
           <h2>Poll Options</h2>
-          <button id="add-option-btn" class="btn-light">Add Option</button>
+          <button id="add-option-btn" class="btn-light">Add Meal Box</button>
         </div>
+        <p id="option-count" class="muted">Current boxes: 0</p>
+        <p class="muted">Use Add Meal Box to create a new option. Use Delete This Box on an option to remove it.</p>
         <div id="options-wrap"></div>
       </section>
 

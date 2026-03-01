@@ -7,6 +7,7 @@ let state = {
   totalVotes: 0,
   userVote: null,
   nutrition: {},
+  ui: {},
   suggestionAllowed: null,
   recentSuggestions: []
 };
@@ -15,15 +16,58 @@ const pollOptionsWrap = document.getElementById("poll-options");
 const voteStatus = document.getElementById("vote-status");
 const mealSelect = document.getElementById("meal-select");
 const meatHeader = document.getElementById("meat-header");
+const vegetarianHeader = document.getElementById("vegetarian-header");
 const nutritionBody = document.getElementById("nutrition-body");
 const suggestInput = document.getElementById("suggest-input");
 const suggestButton = document.getElementById("suggest-btn");
 const suggestStatus = document.getElementById("suggest-status");
 const suggestList = document.getElementById("suggest-list");
+const heroSection = document.getElementById("hero-section");
+const pollSection = document.getElementById("poll-section");
+const nutritionSection = document.getElementById("nutrition-section");
+const suggestionSection = document.getElementById("suggestion-section");
+const siteTitle = document.getElementById("site-title");
+const heroSubtitle = document.getElementById("hero-subtitle");
+const adminLinkText = document.getElementById("admin-link-text");
+const pollTitle = document.getElementById("poll-title");
+const pollNote = document.getElementById("poll-note");
+const nutritionTitle = document.getElementById("nutrition-title");
+const nutritionNote = document.getElementById("nutrition-note");
+const nutritionChooseLabel = document.getElementById("nutrition-choose-label");
+const suggestTitle = document.getElementById("suggest-title");
+const suggestNote = document.getElementById("suggest-note");
+const recentSuggestionsLabel = document.getElementById("recent-suggestions-label");
 
 function setStatus(el, type, text) {
   el.className = `status ${type}`;
   el.textContent = text;
+}
+
+function applyUiConfig() {
+  const ui = state.ui || {};
+
+  if (siteTitle) siteTitle.textContent = ui.siteTitle || "School Dinner Choice Hub";
+  if (heroSubtitle) {
+    heroSubtitle.textContent =
+      ui.heroSubtitle || "No sign-in needed. This device can vote once and suggest once per day.";
+  }
+  if (adminLinkText) adminLinkText.textContent = ui.adminLinkText || "Admin Settings";
+  if (pollTitle) pollTitle.textContent = ui.pollTitle || "1) Vote For Next Vegetarian Dinner";
+  if (pollNote) pollNote.textContent = ui.pollNote || "Live split updates every 5 seconds.";
+  if (nutritionTitle) nutritionTitle.textContent = ui.nutritionTitle || "2) Nutrition: Meat vs Vegetarian";
+  if (nutritionNote) nutritionNote.textContent = ui.nutritionNote || "Compare calories, protein, carbs, fat, and fiber.";
+  if (nutritionChooseLabel) nutritionChooseLabel.textContent = ui.nutritionChooseLabel || "Choose meal:";
+  if (vegetarianHeader) vegetarianHeader.textContent = ui.vegetarianHeader || "Vegetarian Option";
+  if (suggestTitle) suggestTitle.textContent = ui.suggestTitle || "3) Suggest A Meal For The Next Poll";
+  if (suggestNote) suggestNote.textContent = ui.suggestNote || "One suggestion per day per device.";
+  if (suggestInput) suggestInput.placeholder = ui.suggestPlaceholder || "Example: Spinach lasagna with roasted vegetables";
+  if (suggestButton) suggestButton.textContent = ui.suggestButtonText || "Submit Suggestion";
+  if (recentSuggestionsLabel) recentSuggestionsLabel.textContent = ui.recentSuggestionsLabel || "Recent suggestions:";
+
+  if (heroSection) heroSection.style.display = ui.showHero === false ? "none" : "";
+  if (pollSection) pollSection.style.display = ui.showPoll === false ? "none" : "";
+  if (nutritionSection) nutritionSection.style.display = ui.showNutrition === false ? "none" : "";
+  if (suggestionSection) suggestionSection.style.display = ui.showSuggestion === false ? "none" : "";
 }
 
 function getOrCreateDeviceId() {
@@ -71,6 +115,11 @@ function renderPoll() {
   pollOptionsWrap.innerHTML = "";
   const total = state.totalVotes;
 
+  if (!state.pollOptions.length) {
+    setStatus(voteStatus, "warn", "No poll options are currently available.");
+    return;
+  }
+
   state.pollOptions.forEach((option) => {
     const count = state.pollCounts[option] || 0;
     const pct = total === 0 ? 0 : Math.round((count / total) * 100);
@@ -105,6 +154,13 @@ function renderPoll() {
 }
 
 function renderNutritionSelector() {
+  if (!state.pollOptions.length) {
+    mealSelect.innerHTML = "";
+    nutritionBody.innerHTML = "";
+    meatHeader.textContent = "With Meat";
+    return;
+  }
+
   const current = mealSelect.value;
   mealSelect.innerHTML = "";
 
@@ -125,7 +181,10 @@ function renderNutritionSelector() {
 function renderNutritionTable(mealName) {
   nutritionBody.innerHTML = "";
   const meal = state.nutrition[mealName];
-  if (!meal) return;
+  if (!meal) {
+    meatHeader.textContent = "With Meat";
+    return;
+  }
   meatHeader.textContent = meal.meatLabel || "With Meat";
 
   ["Calories", "Protein", "Carbs", "Fat", "Fiber"].forEach((metric) => {
@@ -164,6 +223,11 @@ function renderSuggestions() {
 }
 
 async function submitVote(option) {
+  if (!state.pollOptions.length) {
+    setStatus(voteStatus, "warn", "No poll options are currently available.");
+    return;
+  }
+
   try {
     await apiPost("/api/vote", { device_id: getOrCreateDeviceId(), option });
     await loadBootstrap();
@@ -205,10 +269,12 @@ async function loadBootstrap() {
       totalVotes: data.totalVotes,
       userVote: data.userVote,
       nutrition: data.nutrition,
+      ui: data.ui || {},
       suggestionAllowed: Boolean(data.suggestionAllowed),
       recentSuggestions: data.recentSuggestions
     };
 
+    applyUiConfig();
     renderPoll();
     renderNutritionSelector();
     renderSuggestions();

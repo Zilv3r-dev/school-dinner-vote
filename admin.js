@@ -9,10 +9,51 @@ const saveBtn = document.getElementById("save-btn");
 const statusEl = document.getElementById("status");
 const optionsWrap = document.getElementById("options-wrap");
 const resetVotesCheckbox = document.getElementById("reset-votes");
+const optionCountEl = document.getElementById("option-count");
+const uiSiteTitle = document.getElementById("ui-site-title");
+const uiHeroSubtitle = document.getElementById("ui-hero-subtitle");
+const uiAdminLinkText = document.getElementById("ui-admin-link-text");
+const uiPollTitle = document.getElementById("ui-poll-title");
+const uiPollNote = document.getElementById("ui-poll-note");
+const uiNutritionTitle = document.getElementById("ui-nutrition-title");
+const uiNutritionNote = document.getElementById("ui-nutrition-note");
+const uiNutritionChooseLabel = document.getElementById("ui-nutrition-choose-label");
+const uiVegetarianHeader = document.getElementById("ui-vegetarian-header");
+const uiSuggestTitle = document.getElementById("ui-suggest-title");
+const uiSuggestNote = document.getElementById("ui-suggest-note");
+const uiSuggestPlaceholder = document.getElementById("ui-suggest-placeholder");
+const uiSuggestButtonText = document.getElementById("ui-suggest-button-text");
+const uiRecentSuggestionsLabel = document.getElementById("ui-recent-suggestions-label");
+const uiShowHero = document.getElementById("ui-show-hero");
+const uiShowPoll = document.getElementById("ui-show-poll");
+const uiShowNutrition = document.getElementById("ui-show-nutrition");
+const uiShowSuggestion = document.getElementById("ui-show-suggestion");
+
+const DEFAULT_UI = {
+  showHero: true,
+  showPoll: true,
+  showNutrition: true,
+  showSuggestion: true,
+  siteTitle: "School Dinner Choice Hub",
+  heroSubtitle: "No sign-in needed. This device can vote once and suggest once per day.",
+  adminLinkText: "Admin Settings",
+  pollTitle: "1) Vote For Next Vegetarian Dinner",
+  pollNote: "Live split updates every 5 seconds.",
+  nutritionTitle: "2) Nutrition: Meat vs Vegetarian",
+  nutritionNote: "Compare calories, protein, carbs, fat, and fiber.",
+  nutritionChooseLabel: "Choose meal:",
+  vegetarianHeader: "Vegetarian Option",
+  suggestTitle: "3) Suggest A Meal For The Next Poll",
+  suggestNote: "One suggestion per day per device.",
+  suggestPlaceholder: "Example: Spinach lasagna with roasted vegetables",
+  suggestButtonText: "Submit Suggestion",
+  recentSuggestionsLabel: "Recent suggestions:"
+};
 
 let config = {
   pollOptions: [],
-  nutrition: {}
+  nutrition: {},
+  ui: { ...DEFAULT_UI }
 };
 
 function setStatus(type, text) {
@@ -60,6 +101,12 @@ function emptyNutrition() {
 
 function renderOptions() {
   optionsWrap.innerHTML = "";
+  optionCountEl.textContent = `Current boxes: ${config.pollOptions.length}`;
+
+  if (!config.pollOptions.length) {
+    optionsWrap.innerHTML = `<p class="muted">No meal boxes currently. Click <strong>Add Meal Box</strong> to create one.</p>`;
+    return;
+  }
 
   config.pollOptions.forEach((option, index) => {
     const nutrition = config.nutrition[option] || emptyNutrition();
@@ -69,7 +116,7 @@ function renderOptions() {
     card.innerHTML = `
       <div class="row" style="justify-content:space-between; align-items:center;">
         <strong>Option ${index + 1}</strong>
-        <button class="btn-light remove-option-btn" data-index="${index}">Remove</button>
+        <button class="btn-light remove-option-btn" data-index="${index}">Delete This Box</button>
       </div>
       <div class="stack" style="margin-top:8px;">
         <label>
@@ -114,9 +161,12 @@ function renderOptions() {
     btn.addEventListener("click", () => {
       const idx = Number(btn.dataset.index);
       const optionName = config.pollOptions[idx];
+      const confirmed = window.confirm(`Delete this option box: "${optionName}"?`);
+      if (!confirmed) return;
       config.pollOptions.splice(idx, 1);
       delete config.nutrition[optionName];
       renderOptions();
+      setStatus("ok", "Option box deleted. Click Save Settings to apply.");
     });
   });
 }
@@ -146,8 +196,50 @@ function collectFormData() {
 
   return {
     pollOptions: names,
-    nutrition
+    nutrition,
+    ui: {
+      showHero: Boolean(uiShowHero.checked),
+      showPoll: Boolean(uiShowPoll.checked),
+      showNutrition: Boolean(uiShowNutrition.checked),
+      showSuggestion: Boolean(uiShowSuggestion.checked),
+      siteTitle: (uiSiteTitle.value || "").trim(),
+      heroSubtitle: (uiHeroSubtitle.value || "").trim(),
+      adminLinkText: (uiAdminLinkText.value || "").trim(),
+      pollTitle: (uiPollTitle.value || "").trim(),
+      pollNote: (uiPollNote.value || "").trim(),
+      nutritionTitle: (uiNutritionTitle.value || "").trim(),
+      nutritionNote: (uiNutritionNote.value || "").trim(),
+      nutritionChooseLabel: (uiNutritionChooseLabel.value || "").trim(),
+      vegetarianHeader: (uiVegetarianHeader.value || "").trim(),
+      suggestTitle: (uiSuggestTitle.value || "").trim(),
+      suggestNote: (uiSuggestNote.value || "").trim(),
+      suggestPlaceholder: (uiSuggestPlaceholder.value || "").trim(),
+      suggestButtonText: (uiSuggestButtonText.value || "").trim(),
+      recentSuggestionsLabel: (uiRecentSuggestionsLabel.value || "").trim()
+    }
   };
+}
+
+function fillUiForm(ui) {
+  const merged = { ...DEFAULT_UI, ...(ui || {}) };
+  uiShowHero.checked = Boolean(merged.showHero);
+  uiShowPoll.checked = Boolean(merged.showPoll);
+  uiShowNutrition.checked = Boolean(merged.showNutrition);
+  uiShowSuggestion.checked = Boolean(merged.showSuggestion);
+  uiSiteTitle.value = merged.siteTitle;
+  uiHeroSubtitle.value = merged.heroSubtitle;
+  uiAdminLinkText.value = merged.adminLinkText;
+  uiPollTitle.value = merged.pollTitle;
+  uiPollNote.value = merged.pollNote;
+  uiNutritionTitle.value = merged.nutritionTitle;
+  uiNutritionNote.value = merged.nutritionNote;
+  uiNutritionChooseLabel.value = merged.nutritionChooseLabel;
+  uiVegetarianHeader.value = merged.vegetarianHeader;
+  uiSuggestTitle.value = merged.suggestTitle;
+  uiSuggestNote.value = merged.suggestNote;
+  uiSuggestPlaceholder.value = merged.suggestPlaceholder;
+  uiSuggestButtonText.value = merged.suggestButtonText;
+  uiRecentSuggestionsLabel.value = merged.recentSuggestionsLabel;
 }
 
 async function loadConfig() {
@@ -167,10 +259,12 @@ async function loadConfig() {
 
     config = {
       pollOptions: data.pollOptions,
-      nutrition: data.nutrition
+      nutrition: data.nutrition,
+      ui: { ...DEFAULT_UI, ...(data.ui || {}) }
     };
 
     saveAdminKeyLocally();
+    fillUiForm(config.ui);
     renderOptions();
     setStatus("ok", "Loaded current settings.");
   } catch (err) {
@@ -185,11 +279,6 @@ async function saveConfig() {
   }
 
   const payload = collectFormData();
-  if (payload.pollOptions.length < 2) {
-    setStatus("warn", "Add at least 2 poll options.");
-    return;
-  }
-
   if (payload.pollOptions.some((n) => !n)) {
     setStatus("warn", "Option names cannot be empty.");
     return;
@@ -216,10 +305,12 @@ async function saveConfig() {
 
     config = {
       pollOptions: data.config.pollOptions,
-      nutrition: data.config.nutrition
+      nutrition: data.config.nutrition,
+      ui: { ...DEFAULT_UI, ...(data.config.ui || {}) }
     };
 
     saveAdminKeyLocally();
+    fillUiForm(config.ui);
     renderOptions();
     setStatus("ok", data.message || "Settings saved.");
   } catch (err) {
@@ -232,10 +323,12 @@ function addOption() {
   config.pollOptions.push(next);
   config.nutrition[next] = emptyNutrition();
   renderOptions();
+  setStatus("ok", "New option box added. Fill it in, then click Save Settings.");
 }
 
 function init() {
   loadSavedAdminKey();
+  fillUiForm(DEFAULT_UI);
   loadBtn.addEventListener("click", loadConfig);
   clearAuthBtn.addEventListener("click", clearSavedAdminKey);
   addOptionBtn.addEventListener("click", addOption);

@@ -48,5 +48,6 @@ Then open:
 8. Wait for deploy, then open the generated public URL.
 9. Open `/admin.html` on your site URL to update meal options and nutrition without redeploying.
 10. In admin page, set each option's `Meat Label` individually (for example one meal can be `Chicken`, another can be `Steak`).
+11. In admin page, use `Website Text & Visibility` to rename on-page text and hide/show any main section box.
 
 Once deployed, anyone can open the same URL on any device.
