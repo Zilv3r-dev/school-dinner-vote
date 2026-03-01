@@ -254,7 +254,14 @@
           <input id="reset-votes" type="checkbox" checked />
           Reset existing votes when saving new options
         </label>
-        <button id="save-btn" class="btn">Save Settings</button>
+        <label>
+          <input id="reset-suggestions-defaults" type="checkbox" />
+          Also reset suggestions when restoring defaults
+        </label>
+        <div class="row">
+          <button id="save-btn" class="btn">Save Settings</button>
+          <button id="reset-defaults-btn" class="btn-light">Reset To Defaults</button>
+        </div>
         <div id="status" class="status warn">Waiting for admin login.</div>
       </section>
     </main>

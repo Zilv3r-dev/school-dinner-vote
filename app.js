@@ -186,13 +186,25 @@ function renderNutritionTable(mealName) {
     return;
   }
   meatHeader.textContent = meal.meatLabel || "With Meat";
+  const visibleMetrics = Array.isArray(meal.shownMetrics)
+    ? meal.shownMetrics
+    : ["Calories", "Protein", "Carbs", "Fat", "Fiber"];
 
-  ["Calories", "Protein", "Carbs", "Fat", "Fiber"].forEach((metric) => {
+  if (!visibleMetrics.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td colspan="3">No nutrition rows are selected for this meal.</td>
+    `;
+    nutritionBody.appendChild(row);
+    return;
+  }
+
+  visibleMetrics.forEach((metric) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${metric}</td>
-      <td>${meal.meat[metric]}</td>
-      <td>${meal.veggie[metric]}</td>
+      <td>${meal.meat?.[metric] ?? ""}</td>
+      <td>${meal.veggie?.[metric] ?? ""}</td>
     `;
     nutritionBody.appendChild(row);
   });

@@ -24,18 +24,22 @@ DEFAULT_POLL_OPTIONS = [
 
 DEFAULT_NUTRITION_DATA = {
     "Mushroom Soup": {
+        "shownMetrics": ["Calories", "Protein", "Carbs", "Fat", "Fiber"],
         "meat": {"Calories": 340, "Protein": "24g", "Carbs": "19g", "Fat": "16g", "Fiber": "2g"},
         "veggie": {"Calories": 280, "Protein": "12g", "Carbs": "30g", "Fat": "10g", "Fiber": "6g"},
     },
     "Plant-Based Meatballs": {
+        "shownMetrics": ["Calories", "Protein", "Carbs", "Fat", "Fiber"],
         "meat": {"Calories": 460, "Protein": "31g", "Carbs": "33g", "Fat": "22g", "Fiber": "3g"},
         "veggie": {"Calories": 420, "Protein": "22g", "Carbs": "38g", "Fat": "18g", "Fiber": "8g"},
     },
     "Chickpea Curry": {
+        "shownMetrics": ["Calories", "Protein", "Carbs", "Fat", "Fiber"],
         "meat": {"Calories": 510, "Protein": "28g", "Carbs": "45g", "Fat": "21g", "Fiber": "5g"},
         "veggie": {"Calories": 430, "Protein": "17g", "Carbs": "51g", "Fat": "14g", "Fiber": "11g"},
     },
     "Veggie Taco Bowl": {
+        "shownMetrics": ["Calories", "Protein", "Carbs", "Fat", "Fiber"],
         "meat": {"Calories": 540, "Protein": "34g", "Carbs": "41g", "Fat": "24g", "Fiber": "6g"},
         "veggie": {"Calories": 470, "Protein": "19g", "Carbs": "49g", "Fat": "17g", "Fiber": "12g"},
     },
@@ -183,6 +187,9 @@ def get_poll_config(conn):
         if isinstance(entry, dict) and "meatLabel" not in entry:
             entry["meatLabel"] = row["meat_label"] or DEFAULT_MEAT_LABEL
             nutrition[option] = entry
+        if isinstance(entry, dict) and "shownMetrics" not in entry:
+            entry["shownMetrics"] = list(METRICS)
+            nutrition[option] = entry
     return {
         "pollOptions": options,
         "nutrition": nutrition,
@@ -274,22 +281,51 @@ def validate_config(options, nutrition, ui):
         if not isinstance(meat, dict) or not isinstance(veggie, dict):
             return f"Nutrition for {option} must include meat and veggie sections"
 
+        raw_shown = entry.get("shownMetrics", METRICS)
+        if not isinstance(raw_shown, list):
+            return f"shownMetrics for {option} must be a list"
+        shown_metrics = []
+        for metric in raw_shown:
+            if metric not in METRICS:
+                return f"shownMetrics for {option} includes invalid metric: {metric}"
+            if metric not in shown_metrics:
+                shown_metrics.append(metric)
+
         meat_label = str(entry.get("meatLabel", DEFAULT_MEAT_LABEL)).strip() or DEFAULT_MEAT_LABEL
         if len(meat_label) > 40:
             return f"Meat label for {option} must be 40 characters or less"
 
-        normalized[option] = {"meatLabel": meat_label, "meat": {}, "veggie": {}}
+        normalized[option] = {"meatLabel": meat_label, "shownMetrics": shown_metrics, "meat": {}, "veggie": {}}
         for metric in METRICS:
-            if metric not in meat or metric not in veggie:
-                return f"Nutrition for {option} must include {metric} in both columns"
-            normalized[option]["meat"][metric] = str(meat[metric]).strip()
-            normalized[option]["veggie"][metric] = str(veggie[metric]).strip()
+            normalized[option]["meat"][metric] = str(meat.get(metric, "")).strip()
+            normalized[option]["veggie"][metric] = str(veggie.get(metric, "")).strip()
 
     validated_ui = validate_ui_config(ui)
     if isinstance(validated_ui, str):
         return validated_ui
 
     return {"pollOptions": cleaned, "nutrition": normalized, "ui": validated_ui}
+
+
+def reset_config_to_defaults(conn, reset_votes=True, reset_suggestions=False):
+    conn.execute(
+        """
+        UPDATE poll_config
+        SET options_json = ?, nutrition_json = ?, ui_json = ?, meat_label = ?, updated_at = ?
+        WHERE id = 1
+        """,
+        (
+            json.dumps(DEFAULT_POLL_OPTIONS),
+            json.dumps(DEFAULT_NUTRITION_DATA),
+            json.dumps(DEFAULT_UI_CONFIG),
+            DEFAULT_MEAT_LABEL,
+            datetime.now().isoformat(timespec="seconds"),
+        ),
+    )
+    if reset_votes:
+        conn.execute("DELETE FROM votes")
+    if reset_suggestions:
+        conn.execute("DELETE FROM suggestions")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -542,6 +578,36 @@ class Handler(BaseHTTPRequestHandler):
             message = "Settings saved. Votes were reset for the new poll."
             if not reset_votes:
                 message = "Settings saved. Existing votes were kept."
+
+            self._send_json({"ok": True, "message": message, "config": updated})
+            return
+
+        if parsed.path == "/api/admin/reset":
+            if not ensure_admin_access(self):
+                return
+
+            body = self._read_json()
+            if body is None:
+                body = {}
+
+            reset_votes = bool(body.get("resetVotes", True))
+            reset_suggestions = bool(body.get("resetSuggestions", False))
+
+            conn = get_conn()
+            reset_config_to_defaults(
+                conn,
+                reset_votes=reset_votes,
+                reset_suggestions=reset_suggestions,
+            )
+            conn.commit()
+            updated = get_poll_config(conn)
+            conn.close()
+
+            message = "Defaults restored."
+            if reset_votes:
+                message += " Votes reset."
+            if reset_suggestions:
+                message += " Suggestions reset."
 
             self._send_json({"ok": True, "message": message, "config": updated})
             return

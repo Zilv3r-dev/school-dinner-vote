@@ -49,5 +49,7 @@ Then open:
 9. Open `/admin.html` on your site URL to update meal options and nutrition without redeploying.
 10. In admin page, set each option's `Meat Label` individually (for example one meal can be `Chicken`, another can be `Steak`).
 11. In admin page, use `Website Text & Visibility` to rename on-page text and hide/show any main section box.
+12. In each meal box, choose which nutrition rows to display (Calories/Protein/Carbs/Fat/Fiber) for that specific meal.
+13. Use `Reset To Defaults` in admin page to restore original text/options/layout quickly.
 
 Once deployed, anyone can open the same URL on any device.

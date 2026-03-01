@@ -6,9 +6,11 @@ const loadBtn = document.getElementById("load-btn");
 const clearAuthBtn = document.getElementById("clear-auth-btn");
 const addOptionBtn = document.getElementById("add-option-btn");
 const saveBtn = document.getElementById("save-btn");
+const resetDefaultsBtn = document.getElementById("reset-defaults-btn");
 const statusEl = document.getElementById("status");
 const optionsWrap = document.getElementById("options-wrap");
 const resetVotesCheckbox = document.getElementById("reset-votes");
+const resetSuggestionsDefaultsCheckbox = document.getElementById("reset-suggestions-defaults");
 const optionCountEl = document.getElementById("option-count");
 const uiSiteTitle = document.getElementById("ui-site-title");
 const uiHeroSubtitle = document.getElementById("ui-hero-subtitle");
@@ -94,6 +96,8 @@ function clearSavedAdminKey() {
 
 function emptyNutrition() {
   return {
+    shownMetrics: [...METRICS],
+    meatLabel: "With Meat",
     meat: { Calories: "", Protein: "", Carbs: "", Fat: "", Fiber: "" },
     veggie: { Calories: "", Protein: "", Carbs: "", Fat: "", Fiber: "" }
   };
@@ -109,7 +113,8 @@ function renderOptions() {
   }
 
   config.pollOptions.forEach((option, index) => {
-    const nutrition = config.nutrition[option] || emptyNutrition();
+    const nutrition = { ...emptyNutrition(), ...(config.nutrition[option] || {}) };
+    const shownMetrics = Array.isArray(nutrition.shownMetrics) ? nutrition.shownMetrics : [...METRICS];
 
     const card = document.createElement("article");
     card.className = "option-card";
@@ -126,6 +131,19 @@ function renderOptions() {
         <label>
           <span class="muted">Meat Label For This Option (example: Chicken, Steak)</span>
           <input class="meat-label" data-index="${index}" value="${nutrition.meatLabel ?? "With Meat"}" />
+        </label>
+        <label>
+          <span class="muted">Nutrition rows to display for this meal</span>
+          <div class="row">
+            ${METRICS.map(
+              (metric) => `
+              <label>
+                <input class="shown-metric" data-index="${index}" data-metric="${metric}" type="checkbox" ${shownMetrics.includes(metric) ? "checked" : ""} />
+                ${metric}
+              </label>
+            `
+            ).join("")}
+          </div>
         </label>
         <div class="grid-2">
           <div class="stack">
@@ -177,8 +195,12 @@ function collectFormData() {
 
   names.forEach((name, idx) => {
     const meatLabelInput = document.querySelector(`.meat-label[data-index="${idx}"]`);
+    const shownMetricInputs = Array.from(
+      document.querySelectorAll(`.shown-metric[data-index="${idx}"]`)
+    );
     nutrition[name] = {
       meatLabel: ((meatLabelInput?.value || "").trim() || "With Meat"),
+      shownMetrics: shownMetricInputs.filter((el) => el.checked).map((el) => el.dataset.metric),
       meat: {},
       veggie: {}
     };
@@ -290,6 +312,14 @@ async function saveConfig() {
     return;
   }
 
+  for (const optionName of payload.pollOptions) {
+    const shown = payload.nutrition[optionName]?.shownMetrics || [];
+    if (!shown.length) {
+      setStatus("warn", `Choose at least one visible nutrition row for "${optionName}".`);
+      return;
+    }
+  }
+
   try {
     const res = await fetch("/api/admin/config", {
       method: "POST",
@@ -318,6 +348,43 @@ async function saveConfig() {
   }
 }
 
+async function resetToDefaults() {
+  if (!getAdminKey()) {
+    setStatus("warn", "Enter admin password first.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "Reset all website settings to defaults? This will overwrite custom text, boxes, and nutrition setup."
+  );
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch("/api/admin/reset", {
+      method: "POST",
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        resetVotes: true,
+        resetSuggestions: Boolean(resetSuggestionsDefaultsCheckbox.checked)
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Could not reset defaults");
+
+    config = {
+      pollOptions: data.config.pollOptions,
+      nutrition: data.config.nutrition,
+      ui: { ...DEFAULT_UI, ...(data.config.ui || {}) }
+    };
+    fillUiForm(config.ui);
+    renderOptions();
+    setStatus("ok", data.message || "Defaults restored.");
+  } catch (err) {
+    setStatus("warn", err.message);
+  }
+}
+
 function addOption() {
   const next = `New Meal ${config.pollOptions.length + 1}`;
   config.pollOptions.push(next);
@@ -333,6 +400,7 @@ function init() {
   clearAuthBtn.addEventListener("click", clearSavedAdminKey);
   addOptionBtn.addEventListener("click", addOption);
   saveBtn.addEventListener("click", saveConfig);
+  resetDefaultsBtn.addEventListener("click", resetToDefaults);
 }
 
 init();
